@@ -26,3 +26,48 @@ def count_extended_fingers(landmarks, hand_label):
             count += 1
 
     return count
+
+
+def classify_gesture(hands_data):
+    """Classify gesture from one or two hands.
+
+    Args:
+        hands_data: list of (landmarks, hand_label) tuples
+
+    Returns:
+        Gesture name string
+    """
+    if not hands_data:
+        return "No hand detected"
+
+    if len(hands_data) == 1:
+        lm, label = hands_data[0]
+        fingers = count_extended_fingers(lm, label)
+
+        if fingers == 0:
+            return "Fist"
+        if fingers == 1:
+            thumb_up = (lm[4].x < lm[3].x) if label == "Right" else (lm[4].x > lm[3].x)
+            index_down = lm[8].y > lm[6].y
+            if thumb_up and index_down:
+                return "Thumbs Up"
+            return "1"
+        if fingers == 2:
+            return "2"
+        if fingers == 3:
+            return "3"
+        if fingers == 4:
+            return "4"
+        if fingers == 5:
+            thumb_index_dist = ((lm[4].x - lm[8].x)**2 + (lm[4].y - lm[8].y)**2)**0.5
+            if thumb_index_dist < 0.05:
+                return "OK"
+            return "5"
+
+    total = sum(count_extended_fingers(lm, label) for lm, label in hands_data)
+    if total == 10:
+        return "10"
+    if 6 <= total <= 9:
+        return str(total)
+
+    return "Unknown"
