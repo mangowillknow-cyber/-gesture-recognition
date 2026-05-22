@@ -281,6 +281,16 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+    import socket
+
+    # Single instance check using socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(('127.0.0.1', 12345))
+    except OSError:
+        print("程序已在运行中")
+        sys.exit(0)
+
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
