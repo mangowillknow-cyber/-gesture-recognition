@@ -1,3 +1,4 @@
+import os
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -31,17 +32,17 @@ def count_extended_fingers(landmarks, hand_label):
 def classify_gesture(hands_data):
     """Classify gesture from one or two hands."""
     if not hands_data:
-        return "No hand detected"
+        return "未检测到手势"
     if len(hands_data) == 1:
         lm, label = hands_data[0]
         fingers = count_extended_fingers(lm, label)
         if fingers == 0:
-            return "Fist"
+            return "握拳"
         if fingers == 1:
             thumb_up = (lm[4].x < lm[3].x) if label == "Right" else (lm[4].x > lm[3].x)
             index_down = lm[8].y > lm[6].y
             if thumb_up and index_down:
-                return "Thumbs Up"
+                return "点赞"
             return "1"
         if fingers == 2:
             return "2"
@@ -57,7 +58,7 @@ def classify_gesture(hands_data):
     total = sum(count_extended_fingers(lm, label) for lm, label in hands_data)
     if 1 <= total <= 10:
         return str(total)
-    return "Unknown"
+    return "未知手势"
 
 
 class CameraManager:
@@ -96,28 +97,45 @@ class CameraManager:
 
 class HandDetector:
     def __init__(self):
-        self.mp_hands = mp.solutions.hands
-        self.hands = self.mp_hands.Hands(
-            static_image_mode=False,
-            max_num_hands=2,
-            min_detection_confidence=0.7,
+        from mediapipe.tasks.python import vision
+        from mediapipe.tasks.python.core import base_options as mp_base_options
+
+        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hand_landmarker.task")
+        base = mp_base_options.BaseOptions(model_asset_path=model_path)
+        options = vision.HandLandmarkerOptions(
+            base_options=base,
+            running_mode=vision.RunningMode.VIDEO,
+            num_hands=2,
+            min_hand_detection_confidence=0.7,
             min_tracking_confidence=0.5
         )
-        self.mp_draw = mp.solutions.drawing_utils
+        self.landmarker = vision.HandLandmarker.create_from_options(options)
+        self.frame_count = 0
 
     def detect(self, frame):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.hands.process(rgb)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        result = self.landmarker.detect_for_video(mp_image, self.frame_count)
+        self.frame_count += 1
+
         hands_data = []
-        if results.multi_hand_landmarks:
-            for hand_lm, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
-                label = hand_info.classification[0].label
-                hands_data.append((hand_lm.landmark, label))
-                self.mp_draw.draw_landmarks(frame, hand_lm, self.mp_hands.HAND_CONNECTIONS)
+        if result.hand_landmarks:
+            for hand_lm, handedness in zip(result.hand_landmarks, result.handedness):
+                label = handedness[0].category_name
+                hands_data.append((hand_lm, label))
+
+        # Draw landmarks on frame
+        if result.hand_landmarks:
+            for hand_lm in result.hand_landmarks:
+                for lm in hand_lm:
+                    x = int(lm.x * frame.shape[1])
+                    y = int(lm.y * frame.shape[0])
+                    cv2.circle(frame, (x, y), 3, (0, 255, 0), -1)
+
         return hands_data, frame
 
     def release(self):
-        self.hands.close()
+        self.landmarker.close()
 
 
 class GestureSmoother:
@@ -139,7 +157,7 @@ class GestureSmoother:
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Gesture Recognition")
+        self.setWindowTitle("手势识别")
         self.setMinimumSize(800, 600)
 
         self.camera = CameraManager()
@@ -160,11 +178,11 @@ class MainWindow(QMainWindow):
 
         # Top bar: camera selection
         top = QHBoxLayout()
-        top.addWidget(QLabel("Camera:"))
+        top.addWidget(QLabel("摄像头:"))
         self.camera_combo = QComboBox()
         self.camera_combo.currentIndexChanged.connect(self._on_camera_change)
         top.addWidget(self.camera_combo)
-        self.status_label = QLabel("Status: Initializing...")
+        self.status_label = QLabel("状态: 初始化中...")
         top.addWidget(self.status_label)
         top.addStretch()
         layout.addLayout(top)
@@ -177,17 +195,17 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.video_label)
 
         # Bottom: detected gesture
-        self.gesture_label = QLabel("Detected: ---")
+        self.gesture_label = QLabel("识别结果: ---")
         self.gesture_label.setStyleSheet("font-size: 24px; font-weight: bold; padding: 10px;")
         layout.addWidget(self.gesture_label)
 
     def _init_camera(self):
         cameras = self.camera.enumerate_cameras()
         if not cameras:
-            self.status_label.setText("Status: No camera found")
+            self.status_label.setText("状态: 未检测到摄像头")
             return
         for idx in cameras:
-            self.camera_combo.addItem(f"Camera {idx}", idx)
+            self.camera_combo.addItem(f"摄像头 {idx}", idx)
         self._open_camera(cameras[0])
 
     def _on_camera_change(self, index):
@@ -199,9 +217,9 @@ class MainWindow(QMainWindow):
         self.camera.release()
         self.smoother.reset()
         if self.camera.open(cam_id):
-            self.status_label.setText(f"Status: Camera {cam_id} active")
+            self.status_label.setText(f"状态: 摄像头 {cam_id} 已连接")
         else:
-            self.status_label.setText(f"Status: Failed to open Camera {cam_id}")
+            self.status_label.setText(f"状态: 无法打开摄像头 {cam_id}")
 
     def _process_frame(self):
         ret, frame = self.camera.read()
@@ -212,7 +230,7 @@ class MainWindow(QMainWindow):
         gesture = classify_gesture(hands_data)
         smoothed = self.smoother.update(gesture)
 
-        self.gesture_label.setText(f"Detected: {smoothed}")
+        self.gesture_label.setText(f"识别结果: {smoothed}")
 
         # Convert frame to QImage
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

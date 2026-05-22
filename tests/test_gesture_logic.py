@@ -75,7 +75,7 @@ def _make_landmarks(finger_states, hand_label="Right"):
 
 def test_single_hand_fist():
     lm = _make_landmarks([False, False, False, False, False])
-    assert classify_gesture([(lm, "Right")]) == "Fist"
+    assert classify_gesture([(lm, "Right")]) == "握拳"
 
 
 def test_single_hand_one():
@@ -90,7 +90,7 @@ def test_single_hand_five():
 
 def test_single_hand_thumbs_up():
     lm = _make_landmarks([True, False, False, False, False])
-    assert classify_gesture([(lm, "Right")]) == "Thumbs Up"
+    assert classify_gesture([(lm, "Right")]) == "点赞"
 
 
 def test_two_hands_six():
@@ -112,4 +112,4 @@ def test_two_hands_five():
 
 
 def test_no_hands():
-    assert classify_gesture([]) == "No hand detected"
+    assert classify_gesture([]) == "未检测到手势"
