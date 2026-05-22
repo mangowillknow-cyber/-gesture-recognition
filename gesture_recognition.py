@@ -1,3 +1,6 @@
+import cv2
+
+
 def count_extended_fingers(landmarks, hand_label):
     """Count extended fingers for one hand.
 
@@ -71,3 +74,41 @@ def classify_gesture(hands_data):
         return str(total)
 
     return "Unknown"
+
+
+class CameraManager:
+    def __init__(self):
+        self.cap = None
+        self.current_index = -1
+
+    def enumerate_cameras(self, max_test=10):
+        """Detect available cameras by testing indices."""
+        cameras = []
+        for i in range(max_test):
+            cap = cv2.VideoCapture(i)
+            if cap.isOpened():
+                ret, frame = cap.read()
+                if ret:
+                    cameras.append(i)
+                cap.release()
+        return cameras
+
+    def open(self, index):
+        """Open camera at given index."""
+        if self.cap is not None:
+            self.cap.release()
+        self.cap = cv2.VideoCapture(index)
+        self.current_index = index
+        return self.cap.isOpened()
+
+    def read(self):
+        """Read a frame. Returns (success, frame)."""
+        if self.cap is None or not self.cap.isOpened():
+            return False, None
+        return self.cap.read()
+
+    def release(self):
+        """Release camera resources."""
+        if self.cap is not None:
+            self.cap.release()
+            self.cap = None
