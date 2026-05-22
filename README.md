@@ -36,4 +36,4 @@ tests/                   # 单元测试
 
 ## 开发
 
-本项目由 [Claude](https://claude.ai) 协助开发，包括需求分析、架构设计、代码实现和测试。
+本项目由 [Mangowillknow](https://github.com/mangowillknow-cyber) 开发，使用 [Claude](https://claude.ai) 作为编程助手协助完成需求分析、架构设计、代码实现和测试。
