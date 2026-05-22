@@ -1,4 +1,5 @@
 import cv2
+import mediapipe as mp
 
 
 def count_extended_fingers(landmarks, hand_label):
@@ -112,3 +113,58 @@ class CameraManager:
         if self.cap is not None:
             self.cap.release()
             self.cap = None
+
+
+class HandDetector:
+    def __init__(self):
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands(
+            static_image_mode=False,
+            max_num_hands=2,
+            min_detection_confidence=0.7,
+            min_tracking_confidence=0.5
+        )
+        self.mp_draw = mp.solutions.drawing_utils
+
+    def detect(self, frame):
+        """Detect hands in frame.
+
+        Returns:
+            hands_data: list of (landmarks, label) tuples
+            frame_with_drawing: frame with landmarks drawn
+        """
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.hands.process(rgb)
+
+        hands_data = []
+        if results.multi_hand_landmarks:
+            for hand_lm, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
+                label = hand_info.classification[0].label
+                hands_data.append((hand_lm.landmark, label))
+                self.mp_draw.draw_landmarks(frame, hand_lm, self.mp_hands.HAND_CONNECTIONS)
+
+        return hands_data, frame
+
+    def release(self):
+        self.hands.close()
+
+
+class GestureSmoother:
+    """Smooth gesture output using voting over recent frames."""
+
+    def __init__(self, window=3):
+        self.history = []
+        self.window = window
+
+    def update(self, gesture):
+        """Add new gesture and return smoothed result."""
+        self.history.append(gesture)
+        if len(self.history) > self.window:
+            self.history.pop(0)
+
+        from collections import Counter
+        counts = Counter(self.history)
+        return counts.most_common(1)[0][0]
+
+    def reset(self):
+        self.history.clear()
