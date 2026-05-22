@@ -76,14 +76,12 @@ class CameraManager:
         self.cap = None
         self.current_index = -1
 
-    def enumerate_cameras(self, max_test=10):
+    def enumerate_cameras(self, max_test=20):
         cameras = []
         for i in range(max_test):
             cap = cv2.VideoCapture(i)
             if cap.isOpened():
-                ret, frame = cap.read()
-                if ret:
-                    cameras.append(i)
+                cameras.append(i)
                 cap.release()
         return cameras
 
