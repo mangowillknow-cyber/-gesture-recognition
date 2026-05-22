@@ -15,16 +15,26 @@ from collections import Counter
 def count_extended_fingers(landmarks, hand_label):
     """Count extended fingers for one hand."""
     count = 0
-    if hand_label == "Right":
-        if landmarks[4].x < landmarks[3].x:
-            count += 1
-    else:
-        if landmarks[4].x > landmarks[3].x:
-            count += 1
+
+    # Thumb: check x distance is significant enough
+    thumb_tip_x = landmarks[4].x
+    thumb_ip_x = landmarks[3].x
+    thumb_distance = abs(thumb_tip_x - thumb_ip_x)
+    if thumb_distance > 0.03:  # Minimum threshold for thumb extension
+        if hand_label == "Right":
+            if thumb_tip_x < thumb_ip_x:
+                count += 1
+        else:
+            if thumb_tip_x > thumb_ip_x:
+                count += 1
+
+    # Other 4 fingers: check y distance is significant
     finger_tips = [8, 12, 16, 20]
     finger_pips = [6, 10, 14, 18]
     for tip, pip in zip(finger_tips, finger_pips):
-        if landmarks[tip].y < landmarks[pip].y:
+        tip_y = landmarks[tip].y
+        pip_y = landmarks[pip].y
+        if pip_y - tip_y > 0.01:  # Minimum threshold for finger extension
             count += 1
     return count
 
@@ -159,6 +169,12 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("手势识别")
         self.setMinimumSize(800, 600)
+
+        # Set window icon
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
+        if os.path.exists(icon_path):
+            from PyQt5.QtGui import QIcon
+            self.setWindowIcon(QIcon(icon_path))
 
         self.camera = CameraManager()
         self.detector = HandDetector()
