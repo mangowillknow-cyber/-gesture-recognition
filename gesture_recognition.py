@@ -4,7 +4,7 @@ import mediapipe as mp
 import numpy as np
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QComboBox, QLabel
+    QComboBox, QLabel, QPushButton
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
@@ -198,6 +198,9 @@ class MainWindow(QMainWindow):
         self.camera_combo = QComboBox()
         self.camera_combo.currentIndexChanged.connect(self._on_camera_change)
         top.addWidget(self.camera_combo)
+        self.refresh_btn = QPushButton("刷新")
+        self.refresh_btn.clicked.connect(self._refresh_cameras)
+        top.addWidget(self.refresh_btn)
         self.status_label = QLabel("状态: 初始化中...")
         top.addWidget(self.status_label)
         top.addStretch()
@@ -228,6 +231,20 @@ class MainWindow(QMainWindow):
         if index >= 0:
             cam_id = self.camera_combo.itemData(index)
             self._open_camera(cam_id)
+
+    def _refresh_cameras(self):
+        self.camera.release()
+        self.smoother.reset()
+        self.camera_combo.blockSignals(True)
+        self.camera_combo.clear()
+        cameras = self.camera.enumerate_cameras()
+        if not cameras:
+            self.status_label.setText("状态: 未检测到摄像头")
+        else:
+            for idx in cameras:
+                self.camera_combo.addItem(f"摄像头 {idx}", idx)
+            self.camera_combo.blockSignals(False)
+            self._open_camera(cameras[0])
 
     def _open_camera(self, cam_id):
         self.camera.release()
