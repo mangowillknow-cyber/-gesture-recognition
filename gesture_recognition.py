@@ -55,9 +55,7 @@ def classify_gesture(hands_data):
                 return "OK"
             return "5"
     total = sum(count_extended_fingers(lm, label) for lm, label in hands_data)
-    if total == 10:
-        return "10"
-    if 6 <= total <= 9:
+    if 1 <= total <= 10:
         return str(total)
     return "Unknown"
 

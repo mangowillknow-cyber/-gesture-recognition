@@ -105,5 +105,11 @@ def test_two_hands_ten():
     assert classify_gesture([(lm1, "Right"), (lm2, "Left")]) == "10"
 
 
+def test_two_hands_five():
+    lm1 = _make_landmarks([False, True, True, False, False], "Right")  # 2
+    lm2 = _make_landmarks([False, True, True, True, False], "Left")    # 3
+    assert classify_gesture([(lm1, "Right"), (lm2, "Left")]) == "5"
+
+
 def test_no_hands():
     assert classify_gesture([]) == "No hand detected"
