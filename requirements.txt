@@ -1,0 +1,4 @@
+opencv-python>=4.8
+mediapipe>=0.10
+pyqt5>=5.15
+numpy>=1.24
